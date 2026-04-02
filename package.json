@@ -15,7 +15,8 @@
   "scripts": {
     "build": "tsdown src/index.ts src/cli.ts --format esm --dts",
     "prepare": "tsdown src/index.ts src/cli.ts --format esm --dts",
-    "dev": "tsdown src/index.ts src/cli.ts --format esm --dts --watch"
+    "dev": "tsdown src/index.ts src/cli.ts --format esm --dts --watch",
+    "release": "bumpp"
   },
   "dependencies": {
     "cac": "^6.7.14",
@@ -27,7 +28,8 @@
   },
   "devDependencies": {
     "@types/prompts": "^2.4.9",
-    "@types/semver": "^7.5.8"
+    "@types/semver": "^7.5.8",
+    "bumpp": "^9.11.1"
   },
   "author": "himself65",
   "license": "MIT",
