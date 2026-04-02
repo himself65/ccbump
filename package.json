@@ -1,0 +1,44 @@
+{
+  "name": "ccbump",
+  "version": "0.1.0",
+  "description": "Version bump tool for Claude Code plugins",
+  "type": "module",
+  "bin": {
+    "ccbump": "./dist/cli.js"
+  },
+  "exports": {
+    ".": {
+      "import": "./dist/index.js",
+      "types": "./dist/index.d.ts"
+    }
+  },
+  "scripts": {
+    "build": "tsdown src/index.ts src/cli.ts --format esm --dts",
+    "dev": "tsdown src/index.ts src/cli.ts --format esm --dts --watch"
+  },
+  "dependencies": {
+    "cac": "^6.7.14",
+    "kleur": "^4.1.5",
+    "prompts": "^2.4.2",
+    "semver": "^7.7.2"
+  },
+  "devDependencies": {
+    "@types/prompts": "^2.4.9",
+    "@types/semver": "^7.5.8",
+    "tsdown": "^0.12.5",
+    "typescript": "^5.8.3"
+  },
+  "author": "himself65",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/himself65/ccbump"
+  },
+  "keywords": [
+    "claude-code",
+    "plugin",
+    "version",
+    "bump",
+    "semver"
+  ]
+}
