@@ -116,11 +116,11 @@ function updateVersion(files: VersionFile[], newVersion: string): string[] {
   return updated
 }
 
-function gitCommitTagPush(cwd: string, version: string, options: { commit: boolean; tag: boolean; push: boolean }): void {
+function gitCommitTagPush(cwd: string, version: string, files: string[], options: { commit: boolean; tag: boolean; push: boolean }): void {
   const exec = (cmd: string) => execSync(cmd, { cwd, stdio: 'inherit' })
 
   if (options.commit) {
-    exec('git add -A')
+    exec(`git add ${files.map(f => `"${f}"`).join(' ')}`)
     exec(`git commit -m "chore: release v${version}"`)
   }
 
@@ -131,7 +131,7 @@ function gitCommitTagPush(cwd: string, version: string, options: { commit: boole
   if (options.push) {
     exec('git push')
     if (options.tag) {
-      exec('git push --tags')
+      exec(`git push origin v${version}`)
     }
   }
 }
@@ -236,7 +236,7 @@ export async function bump(options: BumpOptions = {}): Promise<void> {
     console.log(`  ${kleur.green('✓')} ${f.replace(cwd + '/', '')}`)
   }
 
-  gitCommitTagPush(cwd, newVersion, { commit: doCommit, tag: doTag, push: doPush })
+  gitCommitTagPush(cwd, newVersion, updated, { commit: doCommit, tag: doTag, push: doPush })
 
   console.log(`\n${kleur.green('Done!')} Released v${newVersion}\n`)
 }
