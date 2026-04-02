@@ -1,6 +1,6 @@
 {
   "name": "ccbump",
-  "version": "0.1.2",
+  "version": "0.1.3",
   "description": "Version bump tool for Claude Code plugins",
   "type": "module",
   "bin": {
