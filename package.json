@@ -4,18 +4,18 @@
   "description": "Version bump tool for Claude Code plugins",
   "type": "module",
   "bin": {
-    "ccbump": "./dist/cli.js"
+    "ccbump": "./dist/cli.mjs"
   },
   "exports": {
     ".": {
-      "import": "./dist/index.js",
-      "types": "./dist/index.d.ts"
+      "import": "./dist/index.mjs",
+      "types": "./dist/index.d.mts"
     }
   },
   "scripts": {
-    "build": "tsdown src/index.ts src/cli.ts --format esm --dts",
-    "prepare": "tsdown src/index.ts src/cli.ts --format esm --dts",
-    "dev": "tsdown src/index.ts src/cli.ts --format esm --dts --watch",
+    "build": "tsdown",
+    "prepare": "tsdown",
+    "dev": "tsdown --watch",
     "release": "bumpp"
   },
   "dependencies": {
@@ -23,7 +23,7 @@
     "kleur": "^4.1.5",
     "prompts": "^2.4.2",
     "semver": "^7.7.2",
-    "tsdown": "^0.12.5",
+    "tsdown": "^0.21.7",
     "typescript": "^5.8.3"
   },
   "devDependencies": {
