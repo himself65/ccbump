@@ -23,6 +23,12 @@ export interface BumpOptions {
   push?: boolean
   /** Skip confirmation prompt */
   yes?: boolean
+  /**
+   * Custom script to execute after version files are updated, before git operations.
+   * The script receives CCBUMP_VERSION (new), CCBUMP_OLD_VERSION (old), and CCBUMP_CWD as env vars.
+   * Any files created/modified by the script will be included in the git commit.
+   */
+  execute?: string
 }
 
 const RELEASE_TYPES = ['patch', 'minor', 'major', 'prepatch', 'preminor', 'premajor', 'prerelease'] as const
@@ -114,6 +120,33 @@ function updateVersion(files: VersionFile[], newVersion: string): string[] {
   }
 
   return updated
+}
+
+function runCustomScript(cwd: string, script: string, newVersion: string, oldVersion: string): string[] {
+  // Snapshot tracked file mtimes + untracked list before running the script
+  const gitStatusBefore = execSync('git status --porcelain', { cwd, encoding: 'utf-8' }).trim()
+
+  execSync(script, {
+    cwd,
+    stdio: 'inherit',
+    env: {
+      ...process.env,
+      CCBUMP_VERSION: newVersion,
+      CCBUMP_OLD_VERSION: oldVersion,
+      CCBUMP_CWD: cwd,
+    },
+  })
+
+  // Detect files changed by the script
+  const gitStatusAfter = execSync('git status --porcelain', { cwd, encoding: 'utf-8' }).trim()
+  const beforeFiles = new Set(gitStatusBefore.split('\n').filter(Boolean))
+  const newChanges = gitStatusAfter
+    .split('\n')
+    .filter(Boolean)
+    .filter((line) => !beforeFiles.has(line))
+    .map((line) => line.slice(3).trim()) // strip status prefix like "?? " or " M "
+
+  return newChanges
 }
 
 function gitCommitTagPush(cwd: string, version: string, files: string[], options: { commit: boolean; tag: boolean; push: boolean }): void {
@@ -215,6 +248,7 @@ export async function bump(options: BumpOptions = {}): Promise<void> {
   if (doCommit) console.log(`  ${kleur.bold('Commit:')} yes`)
   if (doTag) console.log(`  ${kleur.bold('Tag:')} v${newVersion}`)
   if (doPush) console.log(`  ${kleur.bold('Push:')} yes`)
+  if (options.execute) console.log(`  ${kleur.bold('Execute:')} ${options.execute}`)
 
   if (!options.yes) {
     const { confirmed } = await prompts({
@@ -234,6 +268,15 @@ export async function bump(options: BumpOptions = {}): Promise<void> {
   const updated = updateVersion(files, newVersion)
   for (const f of updated) {
     console.log(`  ${kleur.green('✓')} ${f.replace(cwd + '/', '')}`)
+  }
+
+  if (options.execute) {
+    console.log(`\n  ${kleur.bold('Running script:')} ${options.execute}`)
+    const scriptFiles = runCustomScript(cwd, options.execute, newVersion, currentVersion)
+    for (const f of scriptFiles) {
+      console.log(`  ${kleur.green('✓')} ${f} ${kleur.dim('(from script)')}`)
+      updated.push(resolve(cwd, f))
+    }
   }
 
   gitCommitTagPush(cwd, newVersion, updated, { commit: doCommit, tag: doTag, push: doPush })
