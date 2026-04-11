@@ -1,5 +1,5 @@
-import { readFileSync, writeFileSync } from 'node:fs'
-import { resolve } from 'node:path'
+import { readFileSync, writeFileSync, existsSync, readdirSync } from 'node:fs'
+import { resolve, join } from 'node:path'
 import { execSync } from 'node:child_process'
 import semver from 'semver'
 import prompts from 'prompts'
@@ -41,16 +41,54 @@ interface VersionFile {
 }
 
 function getVersionFiles(cwd: string, extraFiles: string[]): VersionFile[] {
-  const files: VersionFile[] = [
-    {
-      path: resolve(cwd, '.claude-plugin/plugin.json'),
+  const files: VersionFile[] = []
+
+  // Root plugin.json (optional — may not exist in multi-plugin repos)
+  const rootPluginJson = resolve(cwd, '.claude-plugin/plugin.json')
+  if (existsSync(rootPluginJson)) {
+    files.push({
+      path: rootPluginJson,
       keys: [['version']],
-    },
-    {
-      path: resolve(cwd, '.claude-plugin/marketplace.json'),
-      keys: [['metadata', 'version'], ['plugins', '0', 'version']],
-    },
-  ]
+    })
+  }
+
+  // Marketplace.json — dynamically discover all plugins[N].version entries
+  const marketplacePath = resolve(cwd, '.claude-plugin/marketplace.json')
+  if (existsSync(marketplacePath)) {
+    const marketplaceKeys: string[][] = [['metadata', 'version']]
+    try {
+      const marketplace = readJson(marketplacePath)
+      const plugins = marketplace.plugins ?? []
+      for (let i = 0; i < plugins.length; i++) {
+        marketplaceKeys.push(['plugins', String(i), 'version'])
+      }
+    } catch {
+      // Fall back to single plugin entry
+      marketplaceKeys.push(['plugins', '0', 'version'])
+    }
+    files.push({ path: marketplacePath, keys: marketplaceKeys })
+  }
+
+  // Auto-discover per-plugin plugin.json files under plugins/*/
+  const pluginsDir = resolve(cwd, 'plugins')
+  if (existsSync(pluginsDir)) {
+    try {
+      const entries = readdirSync(pluginsDir, { withFileTypes: true })
+      for (const entry of entries) {
+        if (entry.isDirectory()) {
+          const pluginJsonPath = join(pluginsDir, entry.name, 'plugin.json')
+          if (existsSync(pluginJsonPath)) {
+            files.push({
+              path: pluginJsonPath,
+              keys: [['version']],
+            })
+          }
+        }
+      }
+    } catch {
+      // Ignore if plugins/ can't be read
+    }
+  }
 
   for (const file of extraFiles) {
     files.push({
@@ -88,9 +126,16 @@ function setNestedValue(obj: any, keys: string[], value: any): void {
 }
 
 function getCurrentVersion(cwd: string): string {
+  // Try root plugin.json first
   const pluginPath = resolve(cwd, '.claude-plugin/plugin.json')
-  const data = readJson(pluginPath)
-  return data.version
+  if (existsSync(pluginPath)) {
+    const data = readJson(pluginPath)
+    return data.version
+  }
+  // Fall back to marketplace.json metadata.version
+  const marketplacePath = resolve(cwd, '.claude-plugin/marketplace.json')
+  const data = readJson(marketplacePath)
+  return data.metadata.version
 }
 
 function updateVersion(files: VersionFile[], newVersion: string): string[] {
